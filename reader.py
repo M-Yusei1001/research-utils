@@ -20,7 +20,7 @@ def removeBigBrackets(data:str) -> str:
 def main():
     print("データ前処理中...")
     #生データcsv読み込み
-    with open("data/src/J20241017103313.csv", "r", encoding="utf-8") as file:
+    with open("data/src/J20241017103313.csv", "r", encoding="utf_8_sig") as file:
         reader = csv.reader(file)
         
         #読み込んだデータを2次元配列に変換、整形
@@ -31,8 +31,8 @@ def main():
         row[2] = removeBigBrackets(row[2])
 
     #整形データ書き出し
-    with open(f"data/output/{output_filename}", "w", encoding="utf-8") as file:
-        writer = csv.writer(file)
+    with open(f"data/output/{output_filename}", "w", encoding="utf_8_sig") as file:
+        writer = csv.writer(file, lineterminator="\n")
         for row in tqdm.tqdm(l):
             writer.writerow(row)
     

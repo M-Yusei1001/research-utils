@@ -6,7 +6,7 @@ from reader import output_filename, toRegExp
 
 def main():
     #整形データcsv読み込み
-    with open(f"data/output/{output_filename}", "r", encoding="utf-8") as file:
+    with open(f"data/output/{output_filename}", "r", encoding="utf_8_sig") as file:
         reader = csv.reader(file)
         
         #読み込んだデータを2次元配列に変換、整形
@@ -20,7 +20,7 @@ def main():
     col = "品名"
     print(df[col].value_counts())
     frequency = df[col].value_counts()
-    frequency.to_csv(f"data/output/frequency_{col}.csv", encoding="shift-jis")
+    frequency.to_csv(f"data/output/frequency_{col}.csv", encoding="utf_8_sig")
 
 if __name__=="__main__":
     main()
