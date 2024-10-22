@@ -3,7 +3,8 @@ import arviz as az
 import pandas as pd
 import pytensor as pt
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
+import japanize_matplotlib
 
 pt.config.cxx = ""
 
@@ -27,6 +28,14 @@ def main():
     g.render(outfile="model1.png")
 
     az.plot_trace(idata1, compact=False)
+
+    ax = az.plot_posterior(idata1)
+    ax.set_xlim(0, 1)
+    ax.set_title("ベイズ推論結果")
+
+    plt.tight_layout()
+    japanize_matplotlib.japanize()
+    plt.show()
 
 
 if __name__ == "__main__":
