@@ -1,0 +1,12 @@
+digraph {
+	p [label="p
+~
+Uniform" shape=ellipse]
+	subgraph cluster5 {
+		X_obs [label="X_obs
+~
+Bernoulli" shape=ellipse style=filled]
+		label=5 labeljust=r labelloc=b style=rounded
+	}
+	p -> X_obs
+}
