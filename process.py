@@ -2,6 +2,7 @@ import pandas as pd
 import csv
 from reader import output_filename, toRegExp
 import time
+import tqdm
 
 encoding = "utf_8_sig"
 objs = [
@@ -41,10 +42,14 @@ objs = [
     "ふとん乾燥機",
 ]
 
+cols = ["事故原因区分", "被害の種類", "品名", "品目"]
+
 
 def main():
-    for obj in objs:
+    for obj in tqdm.tqdm(objs):
         extractData(objName=obj)
+    for col in tqdm.tqdm(cols):
+        freqAnalysis(col=col)
 
 
 def freqAnalysis(col: str) -> None:
@@ -63,7 +68,6 @@ def freqAnalysis(col: str) -> None:
     df = pd.DataFrame(l, columns=cols)
 
     # 出現頻度
-    print(df[col].value_counts())
     frequency = df[col].value_counts()
     frequency.to_csv(
         f"data/output/frequency_data/frequency_{col}.csv", encoding=encoding
