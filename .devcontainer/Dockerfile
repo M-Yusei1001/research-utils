@@ -19,3 +19,6 @@ RUN git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git && \
     echo dicdir = `mecab-config --dicdir`"/mecab-ipadic-neologd">/etc/mecabrc && \
     sudo cp /etc/mecabrc /usr/local/etc && \
     cd ..
+
+RUN pip install -r requirements.txt && \
+    pip install mecab-python3

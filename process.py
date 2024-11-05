@@ -55,6 +55,15 @@ def main():
 def freqAnalysis(col: str) -> None:
     """
     指定した列（col）の項目について、ユニークな項目の出現回数をカウントする。
+
+    Params
+    ------
+    col: str
+    列名を指定する。
+
+    Returns
+    -------
+    None
     """
     # 整形データcsv読み込み
     with open(f"data/output/{output_filename}", "r", encoding=encoding) as file:
@@ -83,6 +92,15 @@ def extractData(objName: str) -> None:
     - 事故原因区分
     - 再発防止措置
     - 品目
+
+    Params
+    ------
+    objName: str
+    品名を入力する。
+
+    Returns
+    -------
+    None
     """
     with open(f"data/output/{output_filename}", "r", encoding=encoding) as file:
         reader = csv.reader(file)
