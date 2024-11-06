@@ -5,7 +5,7 @@ import time
 import tqdm
 
 encoding = "utf_8_sig"
-objs = [
+products = [
     "パソコン",
     "電気ストーブ",
     "自転車",
@@ -46,8 +46,8 @@ cols = ["事故原因区分", "被害の種類", "品名", "品目"]
 
 
 def main():
-    for obj in tqdm.tqdm(objs):
-        extractData(objName=obj)
+    for product in tqdm.tqdm(products):
+        extractData(product=product)
     for col in tqdm.tqdm(cols):
         freqAnalysis(col=col)
 
@@ -83,7 +83,7 @@ def freqAnalysis(col: str) -> None:
     )
 
 
-def extractData(objName: str) -> None:
+def extractData(product: str) -> None:
     """
     品名（objName）を含む行について、以下の項目を抽出する。
     - 被害の種類
@@ -111,7 +111,7 @@ def extractData(objName: str) -> None:
 
     # 特定の品名のデータを抽出
     targetCol = "品名"
-    data = df[df[targetCol] == objName].loc[
+    data = df[df[targetCol] == product].loc[
         :,
         [
             "被害の種類",
@@ -123,7 +123,7 @@ def extractData(objName: str) -> None:
         ],
     ]
     data.to_csv(
-        f"data/output/extracted_data/{objName}_extracted.csv", encoding=encoding
+        f"data/output/extracted_data/{product}_extracted.csv", encoding=encoding
     )
 
 
