@@ -1,10 +1,11 @@
 colorama==0.4.6
+mecab-python3==1.0.10
 numpy==2.1.2
 pandas==2.2.3
 python-dateutil==2.9.0.post0
 pytz==2024.2
 setuptools==75.1.0
 six==1.16.0
-tqdm==4.66.5
+tqdm==4.66.6
 tzdata==2024.2
 wheel==0.44.0

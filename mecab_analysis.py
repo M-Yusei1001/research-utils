@@ -1,11 +1,8 @@
 import MeCab
 import pandas as pd
 import tqdm
-from process import products
 import time
-
-word_class = ["名詞", "形容詞"]
-encoding = "utf_8_sig"
+from settings import products, encoding, word_class
 
 
 def extractDescription(product: str) -> list[str]:
@@ -31,7 +28,11 @@ def extractDescription(product: str) -> list[str]:
         encoding=encoding,
     ) as file:
         df = pd.read_csv(file)
+
+        # 1つの事故通知内容から抽出した単語のリストを作成
         descriptions = [extractWords(description) for description in df[target_col]]
+
+        # すべてのリストを1つにまとめる
         extracted_words = [word for description in descriptions for word in description]
 
         return extracted_words
@@ -39,7 +40,8 @@ def extractDescription(product: str) -> list[str]:
 
 def extractWords(text: str) -> list[str]:
     """
-    形態素解析をする
+    形態素解析をする。
+    settings.py で指定した word_class の品詞に該当する単語を抽出する。
 
     Params
     ------
@@ -57,6 +59,7 @@ def extractWords(text: str) -> list[str]:
     while node:
         # 単語を抽出
         term = node.surface
+
         # 品詞を抽出
         pos = node.feature.split(",")[0]
 
@@ -68,16 +71,18 @@ def extractWords(text: str) -> list[str]:
     return terms
 
 
-def main(product: str):
-    df = pd.DataFrame(extractDescription(product))
-    freq = df.value_counts()
-    freq.to_csv(
-        f"data/output/words_freq_data/words_freq_{product}.csv", encoding=encoding
-    )
+def main():
+    for product in tqdm.tqdm(products):
+        df = pd.DataFrame(extractDescription(product))
+        freq = df.value_counts()
+        freq.to_csv(
+            f"data/output/words_freq_data/{product}_words_freq.csv",
+            encoding=encoding,
+            index_label="単語",
+        )
 
 
 if __name__ == "__main__":
     start_time = time.time()
-    for product in tqdm.tqdm(products):
-        main(product)
-    print(f"Done in {time.time() - start_time} sec")
+    main()
+    print(f"DONE in {time.time() - start_time} sec")

@@ -2,6 +2,7 @@ import csv
 import tqdm
 import unicodedata
 import re
+import time
 
 output_filename = "incident_data_processed.csv"
 
@@ -47,4 +48,6 @@ def main():
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     main()
+    print(f"DONE in {time.time() - start_time} sec")
