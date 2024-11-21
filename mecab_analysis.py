@@ -2,7 +2,7 @@ import MeCab
 import pandas as pd
 import tqdm
 import time
-from settings import products, encoding, word_class
+import settings as st
 
 
 def extractDescription(product: str) -> list[str]:
@@ -23,9 +23,9 @@ def extractDescription(product: str) -> list[str]:
     target_col = "事故通知内容"
 
     with open(
-        f"data/output/extracted_data/{product}_extracted.csv",
+        f"data/output/extracted_data/{st.category}_{product}_extracted.csv",
         "r",
-        encoding=encoding,
+        encoding=st.encoding,
     ) as file:
         df = pd.read_csv(file)
 
@@ -63,7 +63,7 @@ def extractWords(text: str) -> list[str]:
         # 品詞を抽出
         pos = node.feature.split(",")[0]
 
-        if pos in word_class:
+        if pos in st.word_class:
             terms.append(term)
 
         node = node.next
@@ -72,12 +72,12 @@ def extractWords(text: str) -> list[str]:
 
 
 def main():
-    for product in tqdm.tqdm(products):
+    for product in tqdm.tqdm(st.products):
         df = pd.DataFrame(extractDescription(product))
         freq = df.value_counts()
         freq.to_csv(
-            f"data/output/words_freq_data/{product}_words_freq.csv",
-            encoding=encoding,
+            f"data/output/words_freq_data/{st.category}_{product}_words_freq.csv",
+            encoding=st.encoding,
             index_label="単語",
         )
 
