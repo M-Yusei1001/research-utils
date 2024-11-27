@@ -4,6 +4,8 @@ import time
 import tqdm
 import settings as st
 from reader import toRegExp
+import matplotlib.pyplot as plt
+import japanize_matplotlib
 
 
 def freqShow(output_filename: str):
@@ -14,6 +16,7 @@ def freqShow(output_filename: str):
         plt.title(f"{output_filename}")
         plt.xlabel("組み合わせ")
         plt.ylabel("出現回数")
+        japanize_matplotlib.japanize()
         plt.show()
 
 
@@ -46,14 +49,14 @@ def freqAnalysis(col: str, second_col: str = "") -> None:
     # 出現頻度
     if second_col != "":
         frequency = df.groupby([col, second_col]).size().sort_values(ascending=False)
-        frequency.to_csv(
+        frequency[frequency >= 10].to_csv(
             f"data/output/frequency_data/{st.category}_frequency_{col}_and_{second_col}.csv",
             encoding=st.encoding,
             index_label="selected_col",
         )
     else:
         frequency = df[col].value_counts()
-        frequency.to_csv(
+        frequency[frequency >= 10].to_csv(
             f"data/output/frequency_data/{st.category}_frequency_{col}.csv",
             encoding=st.encoding,
             index_label="selected_col",
@@ -120,4 +123,3 @@ if __name__ == "__main__":
     start_time = time.time()
     main()
     print(f"DONE in {time.time() - start_time} sec")
-    # freqShow("frequency_data/A-B_frequency_品名_and_品目.csv")

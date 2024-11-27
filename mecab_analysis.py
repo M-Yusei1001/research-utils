@@ -75,7 +75,7 @@ def main():
     for product in tqdm.tqdm(st.products):
         df = pd.DataFrame(extractDescription(product))
         freq = df.value_counts()
-        freq.to_csv(
+        freq[freq >= 3].to_csv(
             f"data/output/words_freq_data/{st.category}_{product}_words_freq.csv",
             encoding=st.encoding,
             index_label="単語",
