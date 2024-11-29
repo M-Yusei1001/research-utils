@@ -112,7 +112,7 @@ def extractData(product: str) -> None:
 
 
 def main():
-    for product in tqdm.tqdm(st.products):
+    for product in tqdm.tqdm(st.products_test):
         extractData(product=product)
     for col in tqdm.tqdm(st.cols):
         freqAnalysis(col=col)

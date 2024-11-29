@@ -72,7 +72,7 @@ def extractWords(text: str) -> list[str]:
 
 
 def main():
-    for product in tqdm.tqdm(st.products):
+    for product in tqdm.tqdm(st.products_test):
         df = pd.DataFrame(extractDescription(product))
         freq = df.value_counts()
         freq[freq >= 3].to_csv(
