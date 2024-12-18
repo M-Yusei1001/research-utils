@@ -1,5 +1,4 @@
 .conda
 data
-wikiextractor
-wiki-ex
 __pycache__
+model
