@@ -1,7 +1,6 @@
 from fugashi import Tagger
 import jdepp
 import settings
-import graphviz as gv
 
 
 def text_analysis(text: str, output_filename: str) -> None:
