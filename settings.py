@@ -7,7 +7,7 @@ data_path = {
     "ALL": ["J20241121151249.csv", "all_cat_processed.csv"],
 }
 
-category = "A-B"
+category = "ALL"
 
 products = [
     "電気スタンド",
