@@ -1,10 +1,15 @@
 import pandas as pd
 import settings as st
+import tqdm
 
 
 def data_counter(data: pd.DataFrame, column_name: str) -> pd.DataFrame:
     """
     データフレームからcsvバイナリデータを作成
+
+    Args:
+        data (pd.DataFrame): 読み込んだcsvのデータフレーム
+        column_name (str): カウントするデータ（事故通知内容 or 事故原因）
     """
     new_data = pd.DataFrame()
 
@@ -26,13 +31,13 @@ def data_counter(data: pd.DataFrame, column_name: str) -> pd.DataFrame:
                 new_data.loc[i, column] = 0
 
     # print(f"new_column: {new_data.columns}")
-    print(new_data.head())
+    # print(new_data.head())
     return new_data
 
 
 if __name__ == "__main__":
     # 事故通知内容のバイナリデータを作成
-    for product in st.products_test:
+    for product in tqdm.tqdm(st.products_test):
         data = pd.read_csv(
             f"data/output/gemini/responses/{product}_res.csv", encoding="utf-8-sig"
         )
@@ -44,10 +49,9 @@ if __name__ == "__main__":
             encoding="utf-8-sig",
             index=False,
         )
-        print("Done!")
 
     # 事故原因のバイナリデータを作成
-    for product in st.products_test:
+    for product in tqdm.tqdm(st.products_test):
         data = pd.read_csv(
             f"data/output/gemini/responses/{product}_res.csv", encoding="utf-8-sig"
         )
@@ -59,4 +63,5 @@ if __name__ == "__main__":
             encoding="utf-8-sig",
             index=False,
         )
-        print("Done!")
+
+    print("Done!")
