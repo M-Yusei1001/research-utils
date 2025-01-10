@@ -3,7 +3,7 @@ import csv
 import time
 import tqdm
 import settings as st
-from reader import toRegExp
+from data_reader import toRegExp
 import matplotlib.pyplot as plt
 import japanize_matplotlib
 
