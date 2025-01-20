@@ -58,7 +58,8 @@ def make_blacklist():
             - set(all_causes)
         )
         all_causes.extend(new_column)
-    # print(all_causes)
+    print(all_causes)
+
     all_incidents = []
     for product in tqdm.tqdm(st.products_250115):
         new_column = list(
@@ -71,28 +72,68 @@ def make_blacklist():
             - set(all_incidents)
         )
         all_incidents.extend(new_column)
-    # print(all_incidents)
-    blacklist = pd.DataFrame(columns=["from", "to"])
-    index = 0
-    for incident in tqdm.tqdm(all_incidents):
-        for cause in all_causes:
-            blacklist.loc[index] = [incident, cause]
-            index += 1
-    for cause in tqdm.tqdm(all_causes):
-        for state in all_states:
-            blacklist.loc[index] = [cause, state]
-            index += 1
-    for state in tqdm.tqdm(all_states):
-        for incident in all_incidents:
-            blacklist.loc[index] = [state, incident]
-            index += 1
-    for incident in tqdm.tqdm(all_incidents):
-        for state in all_states:
-            blacklist.loc[index] = [incident, state]
-            index += 1
-    blacklist.to_csv(
-        "data/output/gemini/marged/blacklist.csv", index=False, encoding="utf-8-sig"
+    print(all_incidents)
+
+    all_states = pd.Series(all_states, name="states")
+    all_states.to_csv(
+        "data/output/gemini/marged/data_all_states_250115.csv",
+        index=False,
+        encoding="utf-8-sig",
     )
+
+    all_causes = pd.Series(all_causes, name="causes")
+    all_causes.to_csv(
+        "data/output/gemini/marged/data_all_causes_250115.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    all_incidents = pd.Series(all_incidents, name="incidents")
+    all_incidents.to_csv(
+        "data/output/gemini/marged/data_all_incidents_250115.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    # # bnlearn用のブラックリスト作成
+    # blacklist = pd.DataFrame(columns=["from", "to"])
+    # index = 0
+
+    # # 層間のブラックリスト作成
+    # for incident in tqdm.tqdm(all_incidents):
+    #     for cause in all_causes:
+    #         if incident == cause:
+    #             continue
+    #         blacklist.loc[index] = [incident, cause]
+    #         index += 1
+    # for cause in tqdm.tqdm(all_causes):
+    #     for state in all_states:
+    #         if cause == state:
+    #             continue
+    #         blacklist.loc[index] = [cause, state]
+    #         index += 1
+    # for state in tqdm.tqdm(all_states):
+    #     for incident in all_incidents:
+    #         if state == incident:
+    #             continue
+    #         blacklist.loc[index] = [state, incident]
+    #         index += 1
+    # for incident in tqdm.tqdm(all_incidents):
+    #     for state in all_states:
+    #         if incident == state:
+    #             continue
+    #         blacklist.loc[index] = [incident, state]
+    #         index += 1
+
+    # for row in tqdm.tqdm(blacklist.iterrows()):
+    #     if row[1]["from"] == row[1]["to"]:
+    #         blacklist.drop(row[0], inplace=True)
+
+    # blacklist.to_csv(
+    #     "data/output/gemini/marged/data_blacklist_250115.csv",
+    #     index=False,
+    #     encoding="utf-8-sig",
+    # )
 
 
 def main():
