@@ -5,9 +5,10 @@ data_path = {
     "A-B": ["J20241017103313.csv", "cat_AB_data_processed.csv"],
     "E": ["J20241118145808.csv", "cat_E_data_processed.csv"],
     "ALL": ["J20241121151249.csv", "all_cat_processed.csv"],
+    "ALL_250115": ["J20250115134912.csv", "250115_processed.csv"],
 }
 
-category = "ALL"
+category = "ALL_250115"
 
 products = [
     "電気スタンド",
@@ -26,6 +27,15 @@ products_test = [
     "ミキサー",
     "カセットこんろ",
     "ヘアアイロン",
+]
+
+products_250115 = [
+    "電気オーブントースター",
+    "乾電池",
+    "扇風機",
+    "玩具",
+    "脚立",
+    "シュレッダー",
 ]
 
 # process.py

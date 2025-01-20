@@ -37,7 +37,7 @@ def data_counter(data: pd.DataFrame, column_name: str) -> pd.DataFrame:
 
 if __name__ == "__main__":
     # 事故通知内容のバイナリデータを作成
-    for product in tqdm.tqdm(st.products_test):
+    for product in tqdm.tqdm(st.products_250115):
         data = pd.read_csv(
             f"data/output/gemini/responses/{product}_res.csv", encoding="utf-8-sig"
         )
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         )
 
     # 事故原因のバイナリデータを作成
-    for product in tqdm.tqdm(st.products_test):
+    for product in tqdm.tqdm(st.products_250115):
         data = pd.read_csv(
             f"data/output/gemini/responses/{product}_res.csv", encoding="utf-8-sig"
         )
