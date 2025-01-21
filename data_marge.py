@@ -3,6 +3,10 @@ import settings as st
 import tqdm
 
 
+cause_common_columns = []
+incident_common_columns = []
+
+
 def marge_status_and_cause(states: pd.DataFrame, cause: pd.DataFrame) -> pd.DataFrame:
     """
     2つのデータフレームをマージ
@@ -15,10 +19,21 @@ def marge_status_and_cause(states: pd.DataFrame, cause: pd.DataFrame) -> pd.Data
     if len(states) < len(cause):
         repeats = len(cause) // len(states) + 1
         states = pd.concat([states] * repeats, ignore_index=True)
-    common_columns = states.columns.intersection(cause.columns)
-    # statesとcauseの共通カラムを削除。statesを優先する。
-    cause = cause.drop(columns=common_columns)
-    return pd.merge(states, cause, how="left", left_index=True, right_index=True)
+    cols = cause.columns.intersection(states.columns)
+
+    for column in cols:
+        if column in cause_common_columns:
+            continue
+        cause_common_columns.append(column)
+
+    return pd.merge(
+        states,
+        cause,
+        how="left",
+        left_index=True,
+        right_index=True,
+        suffixes=["", "_cause"],
+    )
 
 
 def marge_with_incident(data: pd.DataFrame, incident: pd.DataFrame) -> pd.DataFrame:
@@ -33,10 +48,21 @@ def marge_with_incident(data: pd.DataFrame, incident: pd.DataFrame) -> pd.DataFr
     if len(data) < len(incident):
         repeats = len(incident) // len(data) + 1
         data = pd.concat([data] * repeats, ignore_index=True)
-    common_columns = data.columns.intersection(incident.columns)
-    # dataとincidentの共通カラムを削除。dataを優先する。
-    incident = incident.drop(columns=common_columns)
-    return pd.merge(data, incident, how="left", left_index=True, right_index=True)
+    cols = incident.columns.intersection(data.columns)
+
+    for column in cols:
+        if column in incident_common_columns:
+            continue
+        incident_common_columns.append(column)
+
+    return pd.merge(
+        data,
+        incident,
+        how="left",
+        left_index=True,
+        right_index=True,
+        suffixes=["", "_incident"],
+    )
 
 
 def make_blacklist():
@@ -46,6 +72,7 @@ def make_blacklist():
         .columns
     )
     # print(all_states)
+
     all_causes = []
     for product in tqdm.tqdm(st.products_250115):
         new_column = list(
@@ -57,8 +84,18 @@ def make_blacklist():
             )
             - set(all_causes)
         )
-        all_causes.extend(new_column)
-    print(all_causes)
+
+        for col in new_column:
+            if col == "2人乗り":
+                col = "二人乗り"
+            if col in cause_common_columns:
+                col = f"{col}_cause"
+                if col not in all_causes:
+                    all_causes.append(col)
+            else:
+                all_causes.append(col)
+
+    # print(all_causes)
 
     all_incidents = []
     for product in tqdm.tqdm(st.products_250115):
@@ -71,8 +108,16 @@ def make_blacklist():
             )
             - set(all_incidents)
         )
-        all_incidents.extend(new_column)
-    print(all_incidents)
+
+        for col in new_column:
+            if col in incident_common_columns:
+                col = f"{col}_incident"
+                if col not in all_incidents:
+                    all_incidents.append(col)
+            else:
+                all_incidents.append(col)
+
+    # print(all_incidents)
 
     all_states = pd.Series(all_states, name="states")
     all_states.to_csv(
@@ -94,46 +139,6 @@ def make_blacklist():
         index=False,
         encoding="utf-8-sig",
     )
-
-    # # bnlearn用のブラックリスト作成
-    # blacklist = pd.DataFrame(columns=["from", "to"])
-    # index = 0
-
-    # # 層間のブラックリスト作成
-    # for incident in tqdm.tqdm(all_incidents):
-    #     for cause in all_causes:
-    #         if incident == cause:
-    #             continue
-    #         blacklist.loc[index] = [incident, cause]
-    #         index += 1
-    # for cause in tqdm.tqdm(all_causes):
-    #     for state in all_states:
-    #         if cause == state:
-    #             continue
-    #         blacklist.loc[index] = [cause, state]
-    #         index += 1
-    # for state in tqdm.tqdm(all_states):
-    #     for incident in all_incidents:
-    #         if state == incident:
-    #             continue
-    #         blacklist.loc[index] = [state, incident]
-    #         index += 1
-    # for incident in tqdm.tqdm(all_incidents):
-    #     for state in all_states:
-    #         if incident == state:
-    #             continue
-    #         blacklist.loc[index] = [incident, state]
-    #         index += 1
-
-    # for row in tqdm.tqdm(blacklist.iterrows()):
-    #     if row[1]["from"] == row[1]["to"]:
-    #         blacklist.drop(row[0], inplace=True)
-
-    # blacklist.to_csv(
-    #     "data/output/gemini/marged/data_blacklist_250115.csv",
-    #     index=False,
-    #     encoding="utf-8-sig",
-    # )
 
 
 def main():
@@ -174,6 +179,7 @@ def main():
         marged_all_data = pd.concat([marged_all_data, data], ignore_index=True)
 
     marged_all_data.fillna(0, inplace=True)
+    marged_all_data.rename(columns={"2人乗り": "二人乗り"}, inplace=True)
     marged_all_data.to_csv(
         "data/output/gemini/marged/data_products_250115.csv",
         index=False,
@@ -181,6 +187,34 @@ def main():
     )
 
 
+def check_columns():
+    data = pd.read_csv(
+        "data/output/gemini/marged/data_products_250115.csv", encoding="utf-8-sig"
+    )
+    causes = pd.read_csv(
+        "data/output/gemini/marged/data_all_causes_250115.csv", encoding="utf-8-sig"
+    )
+    incidents = pd.read_csv(
+        "data/output/gemini/marged/data_all_incidents_250115.csv", encoding="utf-8-sig"
+    )
+    count = 0
+    for col in causes["causes"]:
+        if col not in data.columns:
+            print(f"{col} is not in data columns")
+        count = count + 1
+    print(f"{count} columns checked")
+
+    count = 0
+    for col in incidents["incidents"]:
+        if col not in data.columns:
+            print(f"{col} is not in data columns")
+        count = count + 1
+    print(f"{count} columns checked")
+
+
 if __name__ == "__main__":
+    main()
     make_blacklist()
+    check_columns()
+    # print(f"Common columns: {cause_common_columns}, {incident_common_columns}")
     print("Done!")
