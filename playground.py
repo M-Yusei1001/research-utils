@@ -1,4 +1,5 @@
 import pandas as pd
+import settings as st
 
 
 def patterns():
@@ -42,5 +43,30 @@ def checkdata():
         print("2人乗り is in data")
 
 
+def syn_check():
+    syn_dic = st.syn_dic
+    for key in syn_dic.keys():
+        if type(syn_dic[key]) is str:
+            print(f"{syn_dic[key]} is in syn_dic")
+        else:
+            for value in syn_dic[key]:
+                print(f"{value} is in syn_dic")
+
+
+def syn_marger():
+    syn_dic = {"A": ["B", "C"]}
+
+    data = pd.read_csv("data/test/test_dataset.csv", encoding="utf-8-sig")
+
+    data_cols = data.columns
+    for key in syn_dic.keys():
+        for value in syn_dic[key]:
+            if value in data_cols:
+                data[key] = data[key] | data[value]
+                data = data.drop(value, axis=1)
+
+    data.to_csv("data/test/test_dataset_marged.csv", encoding="utf-8-sig", index=False)
+
+
 if __name__ == "__main__":
-    patterns()
+    print(st.syn_dic["割れ"])

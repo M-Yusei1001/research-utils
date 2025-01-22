@@ -1,7 +1,12 @@
 import pandas as pd
 import settings as st
 import tqdm
+import datetime
+from syndic import syn_dic
+import unicodedata
 
+date_now = datetime.datetime.now().strftime("%Y%m%d")
+date = 20250122
 
 cause_common_columns = []
 incident_common_columns = []
@@ -78,7 +83,7 @@ def make_blacklist():
         new_column = list(
             set(
                 pd.read_csv(
-                    f"data/output/gemini/binary/{product}_cause_bin.csv",
+                    f"data/output/gemini/binary/{product}_{date}_cause_bin.csv",
                     encoding="utf-8-sig",
                 ).columns
             )
@@ -95,6 +100,12 @@ def make_blacklist():
             else:
                 all_causes.append(col)
 
+    for cause in all_causes:
+        for key in syn_dic.keys():
+            for value in syn_dic[key]:
+                if value in all_causes:
+                    all_causes.remove(value)
+
     # print(all_causes)
 
     all_incidents = []
@@ -102,7 +113,7 @@ def make_blacklist():
         new_column = list(
             set(
                 pd.read_csv(
-                    f"data/output/gemini/binary/{product}_incident_bin.csv",
+                    f"data/output/gemini/binary/{product}_{date}_incident_bin.csv",
                     encoding="utf-8-sig",
                 ).columns
             )
@@ -121,23 +132,27 @@ def make_blacklist():
 
     all_states = pd.Series(all_states, name="states")
     all_states.to_csv(
-        "data/output/gemini/marged/data_all_states_250115.csv",
+        f"data/output/gemini/marged/data_all_states_{date_now}.csv",
         index=False,
         encoding="utf-8-sig",
     )
 
     all_causes = pd.Series(all_causes, name="causes")
     all_causes.to_csv(
-        "data/output/gemini/marged/data_all_causes_250115.csv",
+        f"data/output/gemini/marged/data_all_causes_{date_now}.csv",
         index=False,
         encoding="utf-8-sig",
     )
 
     all_incidents = pd.Series(all_incidents, name="incidents")
     all_incidents.to_csv(
-        "data/output/gemini/marged/data_all_incidents_250115.csv",
+        f"data/output/gemini/marged/data_all_incidents_{date_now}.csv",
         index=False,
         encoding="utf-8-sig",
+    )
+
+    print(
+        f"states: {len(all_states)}, causes: {len(all_causes)}, incidents: {len(all_incidents)}"
     )
 
 
@@ -150,20 +165,29 @@ def main():
         marged = marge_status_and_cause(
             states,
             pd.read_csv(
-                f"data/output/gemini/binary/{product}_cause_bin.csv",
+                f"data/output/gemini/binary/{product}_{date}_cause_bin.csv",
                 encoding="utf-8-sig",
             ),
         )
         marged = marge_with_incident(
             marged,
             pd.read_csv(
-                f"data/output/gemini/binary/{product}_incident_bin.csv",
+                f"data/output/gemini/binary/{product}_{date}_incident_bin.csv",
                 encoding="utf-8-sig",
             ),
         )
         marged.fillna(0, inplace=True)
+        marged = marged.astype(int)
+        # 類似表現の結合
+        cols = marged.columns
+        for key in syn_dic.keys():
+            for value in syn_dic[key]:
+                if value in cols:
+                    marged[key] = marged[key] | marged[value]
+                    marged = marged.drop(value, axis=1)
+
         marged.to_csv(
-            f"data/output/gemini/marged/{product}.csv",
+            f"data/output/gemini/marged/{product}_{date_now}.csv",
             index=False,
             encoding="utf-8-sig",
         )
@@ -171,7 +195,7 @@ def main():
     marged_all_data = pd.DataFrame()
     for product in tqdm.tqdm(st.products_250115):
         data = pd.read_csv(
-            f"data/output/gemini/marged/{product}.csv", encoding="utf-8-sig"
+            f"data/output/gemini/marged/{product}_{date}.csv", encoding="utf-8-sig"
         )
         if marged_all_data.empty:
             marged_all_data = data
@@ -181,40 +205,13 @@ def main():
     marged_all_data.fillna(0, inplace=True)
     marged_all_data.rename(columns={"2人乗り": "二人乗り"}, inplace=True)
     marged_all_data.to_csv(
-        "data/output/gemini/marged/data_products_250115.csv",
+        f"data/output/gemini/marged/data_products_{date_now}.csv",
         index=False,
         encoding="utf-8-sig",
     )
 
 
-def check_columns():
-    data = pd.read_csv(
-        "data/output/gemini/marged/data_products_250115.csv", encoding="utf-8-sig"
-    )
-    causes = pd.read_csv(
-        "data/output/gemini/marged/data_all_causes_250115.csv", encoding="utf-8-sig"
-    )
-    incidents = pd.read_csv(
-        "data/output/gemini/marged/data_all_incidents_250115.csv", encoding="utf-8-sig"
-    )
-    count = 0
-    for col in causes["causes"]:
-        if col not in data.columns:
-            print(f"{col} is not in data columns")
-        count = count + 1
-    print(f"{count} columns checked")
-
-    count = 0
-    for col in incidents["incidents"]:
-        if col not in data.columns:
-            print(f"{col} is not in data columns")
-        count = count + 1
-    print(f"{count} columns checked")
-
-
 if __name__ == "__main__":
     main()
     make_blacklist()
-    check_columns()
-    # print(f"Common columns: {cause_common_columns}, {incident_common_columns}")
     print("Done!")
