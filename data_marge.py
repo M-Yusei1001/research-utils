@@ -81,11 +81,20 @@ def check_syn(df: pd.DataFrame) -> pd.DataFrame:
     for col in cols:
         for key in syn_dic.keys():
             key = unicodedata.normalize("NFKC", key)
-            if col in syn_dic[key]:
+            if type(syn_dic[key]) is str and col == syn_dic[key]:
                 if key not in df.columns:
                     df[key] = 0
                 df[key] = df[key] | df[col]
                 df.drop(col, axis=1, inplace=True)
+                # print(f"key: {key}, col: {col}")
+            else:
+                for value in syn_dic[key]:
+                    if col == value:
+                        if key not in df.columns:
+                            df[key] = 0
+                        df[key] = df[key] | df[col]
+                        df.drop(col, axis=1, inplace=True)
+                        # print(f"key: {key}, col: {col}")
 
     return df
 
@@ -149,14 +158,36 @@ def main():
             df1=causes_df, df2=incidents_df, checkList=causes_and_incidents_cmn_cols
         )
 
+        temp_causes_df[product] = causes_df
+        temp_incidents_df[product] = incidents_df
+
+    # print(f"list sc: {states_and_causes_cmn_cols}")
+    # print(f"list si: {states_and_incidents_cmn_cols}")
+    # print(f"list cs: {causes_and_incidents_cmn_cols}")
+
+    # 異なる要素間の同じカラム名にサフィックス付け
+    # 優先度は status > causes > incidents
+    for product in tqdm.tqdm(st.products_250115):
+        causes_df = temp_causes_df[product]
+        incidents_df = temp_incidents_df[product]
+
         for col in causes_df.columns:
             if col in states_and_causes_cmn_cols:
+                # print(f"product: {product}, col: {col}")
                 causes_df = causes_df.rename(columns={col: f"{col}_cause"})
         for col in incidents_df.columns:
             if (col in states_and_incidents_cmn_cols) or (
                 col in causes_and_incidents_cmn_cols
             ):
+                # print(f"product: {product}, col: {col}")
                 incidents_df = incidents_df.rename(columns={col: f"{col}_incident"})
+
+        if "損傷" in causes_df.columns:
+            print(f"損傷 is in {product}")
+        if "飛散" in causes_df.columns:
+            print(f"飛散 is in {product}")
+        if "分離" in causes_df.columns:
+            print(f"分離 is in {product}")
 
         temp_causes_df[product] = causes_df
         temp_incidents_df[product] = incidents_df
@@ -176,27 +207,27 @@ def main():
         causes_df = check_syn(df=causes_df)
         incidents_df = check_syn(df=incidents_df)
 
-        # statesとcausesで名称が同じcolumnを記録する
-        check_duplicated(
-            df1=states_df, df2=causes_df, checkList=states_and_causes_cmn_cols
-        )
-        # statesとincidentsで名称が同じcolumnを記録する
-        check_duplicated(
-            df1=states_df, df2=incidents_df, checkList=states_and_incidents_cmn_cols
-        )
-        # causesとincidentsで名称が同じcolumnを記録する
-        check_duplicated(
-            df1=causes_df, df2=incidents_df, checkList=causes_and_incidents_cmn_cols
-        )
+        # # statesとcausesで名称が同じcolumnを記録する
+        # check_duplicated(
+        #     df1=states_df, df2=causes_df, checkList=states_and_causes_cmn_cols
+        # )
+        # # statesとincidentsで名称が同じcolumnを記録する
+        # check_duplicated(
+        #     df1=states_df, df2=incidents_df, checkList=states_and_incidents_cmn_cols
+        # )
+        # # causesとincidentsで名称が同じcolumnを記録する
+        # check_duplicated(
+        #     df1=causes_df, df2=incidents_df, checkList=causes_and_incidents_cmn_cols
+        # )
 
-        for col in causes_df.columns:
-            if col in states_and_causes_cmn_cols:
-                causes_df = causes_df.rename(columns={col: f"{col}_cause"})
-        for col in incidents_df.columns:
-            if (col in states_and_incidents_cmn_cols) or (
-                col in causes_and_incidents_cmn_cols
-            ):
-                incidents_df = incidents_df.rename(columns={col: f"{col}_incident"})
+        # for col in causes_df.columns:
+        #     if col in states_and_causes_cmn_cols:
+        #         causes_df = causes_df.rename(columns={col: f"{col}_cause"})
+        # for col in incidents_df.columns:
+        #     if (col in states_and_incidents_cmn_cols) or (
+        #         col in causes_and_incidents_cmn_cols
+        #     ):
+        #         incidents_df = incidents_df.rename(columns={col: f"{col}_incident"})
 
         # 「製品の特性」を記録
         states_new_cols = list(set(states_df.columns) - set(states_cols))

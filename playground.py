@@ -1,6 +1,8 @@
 import pandas as pd
 import settings as st
 
+syn_dic = {"D": ["A", "B", "C"], "あ": ["かきくけこ", "うあ"]}
+
 
 def patterns():
     causes = pd.read_csv(
@@ -54,8 +56,6 @@ def syn_check():
 
 
 def syn_marger():
-    syn_dic = {"D": ["A", "B", "C"]}
-
     data = pd.read_csv("data/test/test_dataset.csv", encoding="utf-8-sig")
 
     cols = data.columns
@@ -85,5 +85,68 @@ def dropper():
     print(df)
 
 
+def marger():
+    df1 = pd.read_csv("data/test/test_marge_1.csv", encoding="utf-8-sig")
+    df2 = pd.read_csv("data/test/test_marge_2.csv", encoding="utf-8-sig")
+    df3 = pd.read_csv("data/test/test_marge_3.csv", encoding="utf-8-sig")
+    df4 = pd.read_csv("data/test/test_marge_4.csv", encoding="utf-8-sig")
+
+    duplicated_1 = df1.columns.intersection(df2.columns)
+    duplicated_2 = df3.columns.intersection(df4.columns)
+
+    for value in df2.columns:
+        if value in duplicated_1:
+            df2 = df2.rename(columns={value: f"{value}_2"})
+    for value in df4.columns:
+        if value in duplicated_2:
+            df4 = df4.rename(columns={value: f"{value}_4"})
+
+    df_1_and_2 = pd.merge(
+        left=df1,
+        right=df2,
+        how="left",
+        left_index=True,
+        right_index=True,
+        suffixes=["", "_mg"],
+    )
+
+    df_3_and_4 = pd.merge(
+        left=df3,
+        right=df4,
+        how="left",
+        left_index=True,
+        right_index=True,
+        suffixes=["", "_mg"],
+    )
+
+    df = pd.concat([df_1_and_2, df_3_and_4])
+    df.fillna(0, inplace=True)
+    print(df.head())
+    df.to_csv("data/test/test_marge_marged.csv", encoding="utf-8-sig", index=False)
+
+
+def isWordIn():
+    print("ABC" in "OPPAPAABCAAAAA")
+
+
+def lenOfSyndic():
+    print(len(syn_dic["あ"]))
+
+
+def dicTemp():
+    df1 = pd.read_csv("data/test/test_marge_1.csv", encoding="utf-8-sig")
+    df2 = pd.read_csv("data/test/test_marge_2.csv", encoding="utf-8-sig")
+    df3 = pd.read_csv("data/test/test_marge_3.csv", encoding="utf-8-sig")
+    df4 = pd.read_csv("data/test/test_marge_4.csv", encoding="utf-8-sig")
+
+    temp = {}
+
+    temp["df1"] = df1
+    df1 = df1.drop(columns=["A"])
+    temp["df1"] = df1
+
+    print(len(temp))
+
+
 if __name__ == "__main__":
-    dropper()
+    dicTemp()
