@@ -5,14 +5,25 @@ import datetime
 from syndic import syn_dic
 import unicodedata
 
+# 生成するファイル名に含まれる今日の日付
 date_now = datetime.datetime.now().strftime("%Y%m%d")
-date = 20250122
 
-cause_common_columns = []
-incident_common_columns = []
+# 読み込むファイル名に含まれる日付
+date = 20250123
+
+# 読み込むファイルが存在するディレクトリの日付
+# マージ前データ、ブラックリスト作成用データのディレクトリ
+dir_index = "20250123_001"
+
+output_dir = st.create_dir(base_dir="data/output/gemini/marged")
 
 
-def marge_status_and_cause(states: pd.DataFrame, cause: pd.DataFrame) -> pd.DataFrame:
+states_and_causes_cmn_cols = []
+states_and_incidents_cmn_cols = []
+causes_and_incidents_cmn_cols = []
+
+
+def marge_status_and_cause(states: pd.DataFrame, causes: pd.DataFrame) -> pd.DataFrame:
     """
     2つのデータフレームをマージ
 
@@ -20,20 +31,14 @@ def marge_status_and_cause(states: pd.DataFrame, cause: pd.DataFrame) -> pd.Data
         status (pd.DataFrame): 製品の性質のデータフレーム
         cause (pd.DataFrame): 事故原因のデータフレーム
     """
-    # statesの方がcauseよりも行数が少ない場合、statesの行数をcauseに合わせる
-    if len(states) < len(cause):
-        repeats = len(cause) // len(states) + 1
+    # statesの行数をcausesに合わせる
+    if len(states) < len(causes):
+        repeats = len(causes) // len(states) + 1
         states = pd.concat([states] * repeats, ignore_index=True)
-    cols = cause.columns.intersection(states.columns)
-
-    for column in cols:
-        if column in cause_common_columns:
-            continue
-        cause_common_columns.append(column)
 
     return pd.merge(
         states,
-        cause,
+        causes,
         how="left",
         left_index=True,
         right_index=True,
@@ -41,7 +46,7 @@ def marge_status_and_cause(states: pd.DataFrame, cause: pd.DataFrame) -> pd.Data
     )
 
 
-def marge_with_incident(data: pd.DataFrame, incident: pd.DataFrame) -> pd.DataFrame:
+def marge_with_incident(data: pd.DataFrame, incidents: pd.DataFrame) -> pd.DataFrame:
     """
     2つのデータフレームをマージ
 
@@ -49,20 +54,10 @@ def marge_with_incident(data: pd.DataFrame, incident: pd.DataFrame) -> pd.DataFr
         data (pd.DataFrame): マージ先のデータフレーム
         incident (pd.DataFrame): 事故内容のデータフレーム
     """
-    # dataの方がincidentよりも行数が少ない場合、dataの行数をincidentに合わせる
-    if len(data) < len(incident):
-        repeats = len(incident) // len(data) + 1
-        data = pd.concat([data] * repeats, ignore_index=True)
-    cols = incident.columns.intersection(data.columns)
-
-    for column in cols:
-        if column in incident_common_columns:
-            continue
-        incident_common_columns.append(column)
 
     return pd.merge(
         data,
-        incident,
+        incidents,
         how="left",
         left_index=True,
         right_index=True,
@@ -70,148 +65,252 @@ def marge_with_incident(data: pd.DataFrame, incident: pd.DataFrame) -> pd.DataFr
     )
 
 
-def make_blacklist():
-    all_states = (
-        pd.read_csv("data/src/250115_products_states.csv", encoding="utf-8-sig")
-        .drop(columns="product")
-        .columns
-    )
-    # print(all_states)
+def check_syn(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    類義語辞書に登録した類似表現を統一する。
+    """
+    # Unicode統一処理
+    cols = df.columns
+    for col in cols:
+        renamed_col = unicodedata.normalize("NFKC", col)
+        df.rename(columns={col: renamed_col}, inplace=True)
 
-    all_causes = []
+    # 類似表現の結合
+    cols = df.columns
+
+    for col in cols:
+        for key in syn_dic.keys():
+            key = unicodedata.normalize("NFKC", key)
+            if col in syn_dic[key]:
+                if key not in df.columns:
+                    df[key] = 0
+                df[key] = df[key] | df[col]
+                df.drop(col, axis=1, inplace=True)
+
+    return df
+
+
+def check_duplicated(
+    df1: pd.DataFrame, df2: pd.DataFrame, checkList: list[str]
+) -> None:
+    """
+    df1とdf2の同じカラム名をcheckListに記録する。
+    """
+    for column in df1.columns.intersection(df2.columns):
+        if column in checkList:
+            continue
+        checkList.append(column)
+
+
+def main():
+    """
+    DataFrameを結合する。
+    結合する際に類似表現を統一し、ブラックリスト用にカラム名を記録する。
+    """
+    # 結合するproductのDataFrameを格納する配列
+    marged_df = []
+    # DataFrameの一時保存用
+    temp_causes_df = {}
+    temp_incidents_df = {}
+    # ブラックリスト用のカラム名を格納する配列
+    states_cols = []
+    causes_cols = []
+    incidents_cols = []
+
     for product in tqdm.tqdm(st.products_250115):
-        new_column = list(
-            set(
-                pd.read_csv(
-                    f"data/output/gemini/binary/{product}_{date}_cause_bin.csv",
-                    encoding="utf-8-sig",
-                ).columns
-            )
-            - set(all_causes)
+        states_df = pd.read_csv(
+            "data/src/250115_products_states.csv", encoding="utf-8-sig"
+        )
+        causes_df = pd.read_csv(
+            f"data/output/gemini/binary/{dir_index}/{product}_{date}_cause_bin.csv",
+            encoding="utf-8-sig",
+        )
+        incidents_df = pd.read_csv(
+            f"data/output/gemini/binary/{dir_index}/{product}_{date}_incident_bin.csv",
+            encoding="utf-8-sig",
         )
 
-        for col in new_column:
+        # 前処理
+        states_df = states_df[states_df.loc[:, "product"] == product]
+        states_df = states_df.drop(columns=["product"])
+        causes_df = check_syn(df=causes_df)
+        incidents_df = check_syn(df=incidents_df)
+
+        # statesとcausesで名称が同じcolumnを記録する
+        check_duplicated(
+            df1=states_df, df2=causes_df, checkList=states_and_causes_cmn_cols
+        )
+        # statesとincidentsで名称が同じcolumnを記録する
+        check_duplicated(
+            df1=states_df, df2=incidents_df, checkList=states_and_incidents_cmn_cols
+        )
+        # causesとincidentsで名称が同じcolumnを記録する
+        check_duplicated(
+            df1=causes_df, df2=incidents_df, checkList=causes_and_incidents_cmn_cols
+        )
+
+        for col in causes_df.columns:
+            if col in states_and_causes_cmn_cols:
+                causes_df = causes_df.rename(columns={col: f"{col}_cause"})
+        for col in incidents_df.columns:
+            if (col in states_and_incidents_cmn_cols) or (
+                col in causes_and_incidents_cmn_cols
+            ):
+                incidents_df = incidents_df.rename(columns={col: f"{col}_incident"})
+
+        temp_causes_df[product] = causes_df
+        temp_incidents_df[product] = incidents_df
+
+    # 結合処理とブラックリストの作成
+    for product in tqdm.tqdm(st.products_250115):
+        states_df = pd.read_csv(
+            "data/src/250115_products_states.csv", encoding="utf-8-sig"
+        )
+
+        causes_df = temp_causes_df[product]
+        incidents_df = temp_incidents_df[product]
+
+        # 前処理
+        states_df = states_df[states_df.loc[:, "product"] == product]
+        states_df = states_df.drop(columns=["product"])
+        causes_df = check_syn(df=causes_df)
+        incidents_df = check_syn(df=incidents_df)
+
+        # statesとcausesで名称が同じcolumnを記録する
+        check_duplicated(
+            df1=states_df, df2=causes_df, checkList=states_and_causes_cmn_cols
+        )
+        # statesとincidentsで名称が同じcolumnを記録する
+        check_duplicated(
+            df1=states_df, df2=incidents_df, checkList=states_and_incidents_cmn_cols
+        )
+        # causesとincidentsで名称が同じcolumnを記録する
+        check_duplicated(
+            df1=causes_df, df2=incidents_df, checkList=causes_and_incidents_cmn_cols
+        )
+
+        for col in causes_df.columns:
+            if col in states_and_causes_cmn_cols:
+                causes_df = causes_df.rename(columns={col: f"{col}_cause"})
+        for col in incidents_df.columns:
+            if (col in states_and_incidents_cmn_cols) or (
+                col in causes_and_incidents_cmn_cols
+            ):
+                incidents_df = incidents_df.rename(columns={col: f"{col}_incident"})
+
+        # 「製品の特性」を記録
+        states_new_cols = list(set(states_df.columns) - set(states_cols))
+        for col in states_new_cols:
+            if col not in states_cols:
+                states_cols.append(col)
+        # print(states_cols)
+
+        # 「事故の原因」を記録
+        causes_new_cols = list(set(causes_df.columns) - set(causes_cols))
+        # 特殊表現の置換
+        for col in causes_new_cols:
             if col == "2人乗り":
                 col = "二人乗り"
-            if col in cause_common_columns:
-                col = f"{col}_cause"
-                if col not in all_causes:
-                    all_causes.append(col)
-            else:
-                all_causes.append(col)
+            # # statesと名称が被っている場合は、語尾に"_cause"を追加する
+            # if col in states_and_causes_cmn_cols:
+            #     col = f"{col}_cause"
+            # causes_colsに既に含まれていないことを確認して、追加する
+            if col not in causes_cols:
+                causes_cols.append(col)
+        # print(causes_cols)
 
-    for cause in all_causes:
-        for key in syn_dic.keys():
-            for value in syn_dic[key]:
-                if value in all_causes:
-                    all_causes.remove(value)
+        # 「事故の内容」を記録
+        incidents_new_columns = list(set(incidents_df.columns) - set(incidents_cols))
+        # 特殊表現の置換
+        for col in incidents_new_columns:
+            # # statesかcausesと名称が被っている場合は、語尾に"_incident"を追加する
+            # if (col in states_and_incidents_cmn_cols) or (
+            #     col in causes_and_incidents_cmn_cols
+            # ):
+            #     col = f"{col}_incident"
+            # all_incidentsに既に含まれていないことを確認して、追加する
+            if col not in incidents_cols:
+                incidents_cols.append(col)
+        # print(incidents_cols)
 
-    # print(all_causes)
+        # productごとの結合処理
+        marged = marge_status_and_cause(states=states_df, causes=causes_df)
+        marged = marge_with_incident(data=marged, incidents=incidents_df)
+        marged.fillna(0, inplace=True)
+        marged = marged.astype(int)
+        marged_df.append(marged)
 
-    all_incidents = []
-    for product in tqdm.tqdm(st.products_250115):
-        new_column = list(
-            set(
-                pd.read_csv(
-                    f"data/output/gemini/binary/{product}_{date}_incident_bin.csv",
-                    encoding="utf-8-sig",
-                ).columns
-            )
-            - set(all_incidents)
-        )
+    marged_all_data = pd.DataFrame()
+    for df in marged_df:
+        if marged_all_data.empty:
+            marged_all_data = df
+            continue
+        marged_all_data = pd.concat([marged_all_data, df])
 
-        for col in new_column:
-            if col in incident_common_columns:
-                col = f"{col}_incident"
-                if col not in all_incidents:
-                    all_incidents.append(col)
-            else:
-                all_incidents.append(col)
-
-    # print(all_incidents)
-
-    all_states = pd.Series(all_states, name="states")
-    all_states.to_csv(
-        f"data/output/gemini/marged/data_all_states_{date_now}.csv",
+    marged_all_data.fillna(0, inplace=True)
+    marged_all_data.rename(columns={"2人乗り": "二人乗り"}, inplace=True)
+    marged_all_data.to_csv(
+        f"{output_dir}/data_products_{date_now}.csv",
         index=False,
         encoding="utf-8-sig",
     )
 
-    all_causes = pd.Series(all_causes, name="causes")
-    all_causes.to_csv(
-        f"data/output/gemini/marged/data_all_causes_{date_now}.csv",
+    # 完全一致表現の二重チェック
+    same_exp = []
+    count = 0
+    for cause in causes_cols:
+        for incident in incidents_cols:
+            if cause == incident:
+                count += 1
+                same_exp.append(cause)
+    if count > 0:
+        print(f"There are (is) {count} same expressions between cause and incident")
+
+    count = 0
+    for state in states_cols:
+        for incident in incidents_cols:
+            if state == incident:
+                count += 1
+                same_exp.append(incident)
+    if count > 0:
+        print(f"There are (is) {count} same expressions between state and incident")
+
+    count = 0
+    for state in states_cols:
+        for cause in causes_cols:
+            if cause == state:
+                count += 1
+                same_exp.append(state)
+    if count > 0:
+        print(f"There are (is) {count} same expressions between state and cause")
+    print(f"Same exp: {same_exp}")
+
+    states_cols = pd.Series(states_cols, name="states")
+    states_cols.to_csv(
+        f"{output_dir}/data_states_{date_now}.csv",
         index=False,
         encoding="utf-8-sig",
     )
 
-    all_incidents = pd.Series(all_incidents, name="incidents")
-    all_incidents.to_csv(
-        f"data/output/gemini/marged/data_all_incidents_{date_now}.csv",
+    causes_cols = pd.Series(causes_cols, name="causes")
+    causes_cols.to_csv(
+        f"{output_dir}/data_causes_{date_now}.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    incidents_cols = pd.Series(incidents_cols, name="incidents")
+    incidents_cols.to_csv(
+        f"{output_dir}/data_incidents_{date_now}.csv",
         index=False,
         encoding="utf-8-sig",
     )
 
     print(
-        f"states: {len(all_states)}, causes: {len(all_causes)}, incidents: {len(all_incidents)}"
-    )
-
-
-def main():
-    for product in tqdm.tqdm(st.products_250115):
-        states = pd.read_csv(
-            "data/src/250115_products_states.csv", encoding="utf-8-sig"
-        )
-        states = states[states["product"] == product].drop(columns=["product"])
-        marged = marge_status_and_cause(
-            states,
-            pd.read_csv(
-                f"data/output/gemini/binary/{product}_{date}_cause_bin.csv",
-                encoding="utf-8-sig",
-            ),
-        )
-        marged = marge_with_incident(
-            marged,
-            pd.read_csv(
-                f"data/output/gemini/binary/{product}_{date}_incident_bin.csv",
-                encoding="utf-8-sig",
-            ),
-        )
-        marged.fillna(0, inplace=True)
-        marged = marged.astype(int)
-        # 類似表現の結合
-        cols = marged.columns
-        for key in syn_dic.keys():
-            for value in syn_dic[key]:
-                if value in cols:
-                    marged[key] = marged[key] | marged[value]
-                    marged = marged.drop(value, axis=1)
-
-        marged.to_csv(
-            f"data/output/gemini/marged/{product}_{date_now}.csv",
-            index=False,
-            encoding="utf-8-sig",
-        )
-
-    marged_all_data = pd.DataFrame()
-    for product in tqdm.tqdm(st.products_250115):
-        data = pd.read_csv(
-            f"data/output/gemini/marged/{product}_{date}.csv", encoding="utf-8-sig"
-        )
-        if marged_all_data.empty:
-            marged_all_data = data
-            continue
-        marged_all_data = pd.concat([marged_all_data, data], ignore_index=True)
-
-    marged_all_data.fillna(0, inplace=True)
-    marged_all_data.rename(columns={"2人乗り": "二人乗り"}, inplace=True)
-    marged_all_data.to_csv(
-        f"data/output/gemini/marged/data_products_{date_now}.csv",
-        index=False,
-        encoding="utf-8-sig",
+        f"states: {len(states_cols)}, causes: {len(causes_cols)}, incidents: {len(incidents_cols)}"
     )
 
 
 if __name__ == "__main__":
     main()
-    make_blacklist()
     print("Done!")

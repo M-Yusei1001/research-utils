@@ -4,6 +4,8 @@ import tqdm
 import datetime
 
 date_now = datetime.datetime.now().strftime("%Y%m%d")
+output_dir = st.create_dir("data/output/gemini/binary")
+dir_index = "20250115"
 
 
 def data_counter(data: pd.DataFrame, column_name: str) -> pd.DataFrame:
@@ -42,13 +44,14 @@ def main():
     # 事故通知内容のバイナリデータを作成
     for product in tqdm.tqdm(st.products_250115):
         data = pd.read_csv(
-            f"data/output/gemini/responses/{product}_res.csv", encoding="utf-8-sig"
+            f"data/output/gemini/responses/{dir_index}/{product}_res.csv",
+            encoding="utf-8-sig",
         )
         data_counter(
             data=data,
             column_name="事故通知内容",
         ).to_csv(
-            f"data/output/gemini/binary/{product}_{date_now}_incident_bin.csv",
+            f"{output_dir}/{product}_{date_now}_incident_bin.csv",
             encoding="utf-8-sig",
             index=False,
         )
@@ -56,13 +59,14 @@ def main():
     # 事故原因のバイナリデータを作成
     for product in tqdm.tqdm(st.products_250115):
         data = pd.read_csv(
-            f"data/output/gemini/responses/{product}_res.csv", encoding="utf-8-sig"
+            f"data/output/gemini/responses/{dir_index}/{product}_res.csv",
+            encoding="utf-8-sig",
         )
         data_counter(
             data=data,
             column_name="事故原因",
         ).to_csv(
-            f"data/output/gemini/binary/{product}_{date_now}_cause_bin.csv",
+            f"{output_dir}/{product}_{date_now}_cause_bin.csv",
             encoding="utf-8-sig",
             index=False,
         )

@@ -54,19 +54,36 @@ def syn_check():
 
 
 def syn_marger():
-    syn_dic = {"A": ["B", "C"]}
+    syn_dic = {"D": ["A", "B", "C"]}
 
     data = pd.read_csv("data/test/test_dataset.csv", encoding="utf-8-sig")
 
-    data_cols = data.columns
-    for key in syn_dic.keys():
-        for value in syn_dic[key]:
-            if value in data_cols:
-                data[key] = data[key] | data[value]
-                data = data.drop(value, axis=1)
+    cols = data.columns
+
+    try:
+        for col in cols:
+            for key in syn_dic.keys():
+                if col in syn_dic[key]:
+                    if key not in data.columns:
+                        data[key] = 0
+                    data[key] = data[key] | data[col]
+                    data.drop(col, axis=1, inplace=True)
+                    print(f"col: {col}, key: {key}")
+
+    except Exception as e:
+        print(f"Exception occured: {e}")
 
     data.to_csv("data/test/test_dataset_marged.csv", encoding="utf-8-sig", index=False)
 
 
+def dropper():
+    states_df = pd.read_csv("data/src/250115_products_states.csv", encoding="utf-8-sig")
+
+    product = "シュレッダー"
+    df = states_df[states_df.loc[:, "product"] == product]
+    df = df.drop(columns=["product"])
+    print(df)
+
+
 if __name__ == "__main__":
-    print(st.syn_dic["割れ"])
+    dropper()

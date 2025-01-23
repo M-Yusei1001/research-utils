@@ -1,3 +1,6 @@
+import os
+import datetime
+
 # global settings
 encoding = "utf_8_sig"
 
@@ -81,3 +84,29 @@ danger_states = [
 danger_actions = []
 
 injures = ["傷", "裂傷", "軽傷", "火傷", "痛く"]
+
+
+def create_dir(base_dir="data/output/gemini/responses") -> str:
+    """
+    指定したベースディレクトリに、日付と連番を組み合わせた名称のディレクトリを作成する。
+    既に同名のディレクトリが存在する場合、連番をインクリメントして新たなディレクトリを作成する。
+
+    Args:
+        base_dir: ベースとなるディレクトリのパス (デフォルト: "data/output/gemini/responses")
+
+    Returns:
+        str: 作成されたディレクトリの相対パス
+    """
+
+    today = datetime.date.today().strftime("%Y%m%d")
+    num = 1
+
+    while True:
+        dir_name = f"{base_dir}/{today}_{num:03d}"  # 連番を3桁で表示
+        try:
+            if not os.path.exists(dir_name):
+                os.makedirs(dir_name)
+                return dir_name
+            num += 1
+        except OSError as e:
+            print(f"ディレクトリ作成中にエラーが発生しました: {e}")
