@@ -42,7 +42,7 @@ def marge_status_and_cause(states: pd.DataFrame, causes: pd.DataFrame) -> pd.Dat
         how="left",
         left_index=True,
         right_index=True,
-        suffixes=["", "_cause"],
+        suffixes=["", "_C"],
     )
 
 
@@ -61,7 +61,7 @@ def marge_with_incident(data: pd.DataFrame, incidents: pd.DataFrame) -> pd.DataF
         how="left",
         left_index=True,
         right_index=True,
-        suffixes=["", "_incident"],
+        suffixes=["", "_I"],
     )
 
 
@@ -87,8 +87,9 @@ def check_syn(df: pd.DataFrame) -> pd.DataFrame:
                 df[key] = df[key] | df[col]
                 df.drop(col, axis=1, inplace=True)
                 # print(f"key: {key}, col: {col}")
-            else:
+            elif type(syn_dic[key]) is not str:
                 for value in syn_dic[key]:
+                    # print(f"value: {value}, col: {col}")
                     if col == value:
                         if key not in df.columns:
                             df[key] = 0
@@ -161,7 +162,7 @@ def main():
             )
             check_duplicated(
                 df1=temp_states_df[product_1],
-                df2=temp_causes_df[product_2],
+                df2=temp_incidents_df[product_2],
                 checkList=states_and_incidents_cmn_cols,
             )
             check_duplicated(
@@ -170,23 +171,20 @@ def main():
                 checkList=causes_and_incidents_cmn_cols,
             )
 
-    # 異なる要素間の同じカラム名にサフィックス付け
-    # 優先度は status > causes > incidents
+    # 全カラム名にサフィックス付け
     for product in tqdm.tqdm(st.products_250115):
+        states_df = temp_states_df[product]
         causes_df = temp_causes_df[product]
         incidents_df = temp_incidents_df[product]
 
+        for col in states_df.columns:
+            states_df = states_df.rename(columns={col: f"{col}_S"})
         for col in causes_df.columns:
-            if col in states_and_causes_cmn_cols:
-                # print(f"product: {product}, col: {col}")
-                causes_df = causes_df.rename(columns={col: f"{col}_cause"})
+            causes_df = causes_df.rename(columns={col: f"{col}_C"})
         for col in incidents_df.columns:
-            if (col in states_and_incidents_cmn_cols) or (
-                col in causes_and_incidents_cmn_cols
-            ):
-                # print(f"product: {product}, col: {col}")
-                incidents_df = incidents_df.rename(columns={col: f"{col}_incident"})
+            incidents_df = incidents_df.rename(columns={col: f"{col}_I"})
 
+        temp_states_df[product] = states_df
         temp_causes_df[product] = causes_df
         temp_incidents_df[product] = incidents_df
 
@@ -239,6 +237,23 @@ def main():
 
     marged_all_data.fillna(0, inplace=True)
     marged_all_data.rename(columns={"2人乗り": "二人乗り"}, inplace=True)
+
+    # 出現回数が指定した回数より少ない項目は削除する
+    cols = marged_all_data.columns
+    for col in cols:
+        if marged_all_data[col].sum() <= 3:
+            marged_all_data = marged_all_data.drop(columns=[col])
+            print(f"Deleted: {col}")
+            for states_col in states_cols:
+                if col == states_col:
+                    states_cols.remove(col)
+            for causes_col in causes_cols:
+                if col == causes_col:
+                    causes_cols.remove(col)
+            for incidents_col in incidents_cols:
+                if col == incidents_col:
+                    incidents_cols.remove(col)
+
     marged_all_data.to_csv(
         f"{output_dir}/data_products_{date_now}.csv",
         index=False,
@@ -273,8 +288,10 @@ def main():
                 same_exp.append(state)
     if count > 0:
         print(f"There are (is) {count} same expressions between state and cause")
-    print(f"Same exp: {same_exp}")
+    if same_exp:
+        print(f"Same exp: {same_exp}")
 
+    # 書き出し
     states_cols = pd.Series(states_cols, name="states")
     states_cols.to_csv(
         f"{output_dir}/data_states_{date_now}.csv",
