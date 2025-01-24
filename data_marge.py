@@ -119,6 +119,7 @@ def main():
     # 結合するproductのDataFrameを格納する配列
     marged_df = []
     # DataFrameの一時保存用
+    temp_states_df = {}
     temp_causes_df = {}
     temp_incidents_df = {}
     # ブラックリスト用のカラム名を格納する配列
@@ -126,6 +127,8 @@ def main():
     causes_cols = []
     incidents_cols = []
 
+    # 前処理
+    # 類似表現の統一
     for product in tqdm.tqdm(st.products_250115):
         states_df = pd.read_csv(
             "data/src/250115_products_states.csv", encoding="utf-8-sig"
@@ -139,31 +142,33 @@ def main():
             encoding="utf-8-sig",
         )
 
-        # 前処理
         states_df = states_df[states_df.loc[:, "product"] == product]
         states_df = states_df.drop(columns=["product"])
         causes_df = check_syn(df=causes_df)
         incidents_df = check_syn(df=incidents_df)
 
-        # statesとcausesで名称が同じcolumnを記録する
-        check_duplicated(
-            df1=states_df, df2=causes_df, checkList=states_and_causes_cmn_cols
-        )
-        # statesとincidentsで名称が同じcolumnを記録する
-        check_duplicated(
-            df1=states_df, df2=incidents_df, checkList=states_and_incidents_cmn_cols
-        )
-        # causesとincidentsで名称が同じcolumnを記録する
-        check_duplicated(
-            df1=causes_df, df2=incidents_df, checkList=causes_and_incidents_cmn_cols
-        )
-
+        temp_states_df[product] = states_df
         temp_causes_df[product] = causes_df
         temp_incidents_df[product] = incidents_df
 
-    # print(f"list sc: {states_and_causes_cmn_cols}")
-    # print(f"list si: {states_and_incidents_cmn_cols}")
-    # print(f"list cs: {causes_and_incidents_cmn_cols}")
+    # 完全一致表現のカウント
+    for product_1 in tqdm.tqdm(st.products_250115):
+        for product_2 in tqdm.tqdm(st.products_250115):
+            check_duplicated(
+                df1=temp_states_df[product_1],
+                df2=temp_causes_df[product_2],
+                checkList=states_and_causes_cmn_cols,
+            )
+            check_duplicated(
+                df1=temp_states_df[product_1],
+                df2=temp_causes_df[product_2],
+                checkList=states_and_incidents_cmn_cols,
+            )
+            check_duplicated(
+                df1=temp_causes_df[product_1],
+                df2=temp_incidents_df[product_2],
+                checkList=causes_and_incidents_cmn_cols,
+            )
 
     # 異なる要素間の同じカラム名にサフィックス付け
     # 優先度は status > causes > incidents
@@ -182,52 +187,14 @@ def main():
                 # print(f"product: {product}, col: {col}")
                 incidents_df = incidents_df.rename(columns={col: f"{col}_incident"})
 
-        if "損傷" in causes_df.columns:
-            print(f"損傷 is in {product}")
-        if "飛散" in causes_df.columns:
-            print(f"飛散 is in {product}")
-        if "分離" in causes_df.columns:
-            print(f"分離 is in {product}")
-
         temp_causes_df[product] = causes_df
         temp_incidents_df[product] = incidents_df
 
     # 結合処理とブラックリストの作成
     for product in tqdm.tqdm(st.products_250115):
-        states_df = pd.read_csv(
-            "data/src/250115_products_states.csv", encoding="utf-8-sig"
-        )
-
+        states_df = temp_states_df[product]
         causes_df = temp_causes_df[product]
         incidents_df = temp_incidents_df[product]
-
-        # 前処理
-        states_df = states_df[states_df.loc[:, "product"] == product]
-        states_df = states_df.drop(columns=["product"])
-        causes_df = check_syn(df=causes_df)
-        incidents_df = check_syn(df=incidents_df)
-
-        # # statesとcausesで名称が同じcolumnを記録する
-        # check_duplicated(
-        #     df1=states_df, df2=causes_df, checkList=states_and_causes_cmn_cols
-        # )
-        # # statesとincidentsで名称が同じcolumnを記録する
-        # check_duplicated(
-        #     df1=states_df, df2=incidents_df, checkList=states_and_incidents_cmn_cols
-        # )
-        # # causesとincidentsで名称が同じcolumnを記録する
-        # check_duplicated(
-        #     df1=causes_df, df2=incidents_df, checkList=causes_and_incidents_cmn_cols
-        # )
-
-        # for col in causes_df.columns:
-        #     if col in states_and_causes_cmn_cols:
-        #         causes_df = causes_df.rename(columns={col: f"{col}_cause"})
-        # for col in incidents_df.columns:
-        #     if (col in states_and_incidents_cmn_cols) or (
-        #         col in causes_and_incidents_cmn_cols
-        #     ):
-        #         incidents_df = incidents_df.rename(columns={col: f"{col}_incident"})
 
         # 「製品の特性」を記録
         states_new_cols = list(set(states_df.columns) - set(states_cols))
@@ -242,9 +209,6 @@ def main():
         for col in causes_new_cols:
             if col == "2人乗り":
                 col = "二人乗り"
-            # # statesと名称が被っている場合は、語尾に"_cause"を追加する
-            # if col in states_and_causes_cmn_cols:
-            #     col = f"{col}_cause"
             # causes_colsに既に含まれていないことを確認して、追加する
             if col not in causes_cols:
                 causes_cols.append(col)
@@ -254,11 +218,6 @@ def main():
         incidents_new_columns = list(set(incidents_df.columns) - set(incidents_cols))
         # 特殊表現の置換
         for col in incidents_new_columns:
-            # # statesかcausesと名称が被っている場合は、語尾に"_incident"を追加する
-            # if (col in states_and_incidents_cmn_cols) or (
-            #     col in causes_and_incidents_cmn_cols
-            # ):
-            #     col = f"{col}_incident"
             # all_incidentsに既に含まれていないことを確認して、追加する
             if col not in incidents_cols:
                 incidents_cols.append(col)
