@@ -236,14 +236,17 @@ def main():
         marged_all_data = pd.concat([marged_all_data, df])
 
     marged_all_data.fillna(0, inplace=True)
+    marged_all_data = marged_all_data.astype(int)
     marged_all_data.rename(columns={"2人乗り": "二人乗り"}, inplace=True)
+    marged_all_data = marged_all_data.reset_index(drop=True)
 
     # 出現回数が指定した回数より少ない項目は削除する
     cols = marged_all_data.columns
+    deleted = []
     for col in cols:
         if marged_all_data[col].sum() <= 3:
             marged_all_data = marged_all_data.drop(columns=[col])
-            print(f"Deleted: {col}")
+            deleted.append(col)
             for states_col in states_cols:
                 if col == states_col:
                     states_cols.remove(col)
@@ -253,12 +256,19 @@ def main():
             for incidents_col in incidents_cols:
                 if col == incidents_col:
                     incidents_cols.remove(col)
+    print(f"Deleted: {deleted}")
 
-    marged_all_data.to_csv(
-        f"{output_dir}/data_products_{date_now}.csv",
-        index=False,
-        encoding="utf-8-sig",
-    )
+    # 指定した列の合計が0の行は削除する
+    target_row = []
+    for i in range(0, len(marged_all_data)):
+        if not (marged_all_data.iloc[i, :][causes_cols].sum().all()):
+            target_row.append(i)
+            continue
+        if not (marged_all_data.iloc[i, :][incidents_cols].sum().all()):
+            target_row.append(i)
+    print(target_row)
+    for row in target_row:
+        marged_all_data = marged_all_data.drop(axis=0, index=row)
 
     # 完全一致表現の二重チェック
     same_exp = []
@@ -292,6 +302,12 @@ def main():
         print(f"Same exp: {same_exp}")
 
     # 書き出し
+    marged_all_data.to_csv(
+        f"{output_dir}/data_products_{date_now}.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
     states_cols = pd.Series(states_cols, name="states")
     states_cols.to_csv(
         f"{output_dir}/data_states_{date_now}.csv",
@@ -316,6 +332,7 @@ def main():
     print(
         f"states: {len(states_cols)}, causes: {len(causes_cols)}, incidents: {len(incidents_cols)}"
     )
+    print(f"All data: {len(marged_all_data)}")
 
 
 if __name__ == "__main__":

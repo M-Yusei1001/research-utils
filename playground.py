@@ -148,5 +148,37 @@ def dicTemp():
     print(len(temp))
 
 
+def sumcols():
+    df = pd.read_csv("data/test/test_marge_marged.csv", encoding="utf-8-sig")
+    # print(df.iloc[1, :][["A", "B"]])
+    # print(df.head())
+    # df = df.drop(index=2)
+    # print(df.head())
+    # df.reset_index(drop=True, inplace=True)
+    # print(df.head())
+
+    count = 0
+    for i in range(0, df.__len__()):
+        count += 1
+    print(f"count: {count}")
+
+    count = 0
+    for i in range(0, df.__len__()):
+        if i % 2 == 0:
+            df = df.drop(index=i)
+        count += 1
+        df.reset_index(drop=True, inplace=True)
+        # if not i % 2 == 0:
+        #     print(df.iloc[i, :][["A", "B"]])
+    print(f"count: {count}")
+    print(df.head())
+
+
+def add_dataframe():
+    data = pd.DataFrame(columns=["A", "B"])
+    data.concat([0, 1])
+    print(data)
+
+
 if __name__ == "__main__":
-    dicTemp()
+    add_dataframe()

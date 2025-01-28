@@ -6,9 +6,25 @@ import tqdm
 import datetime
 from syndic import syn_dic
 import unicodedata
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 # 生成するファイル名に含まれる今日の日付
 date_now = datetime.datetime.now().strftime("%Y%m%d")
+
+
+# ログファイル名に含まれる今日の日付
+def localtime_to_str():
+    return time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+
+
+logging.basicConfig(
+    filename=f"data/output/inc_categorized/log/{localtime_to_str()}.log",
+    encoding="utf-8",
+    level=logging.DEBUG,
+)
 
 # 読み込むファイル名に含まれる日付
 date = 20250123
@@ -238,14 +254,17 @@ def main():
         marged_all_data = pd.concat([marged_all_data, df])
 
     marged_all_data.fillna(0, inplace=True)
+    marged_all_data = marged_all_data.astype(int)
     marged_all_data.rename(columns={"2人乗り": "二人乗り"}, inplace=True)
+    marged_all_data = marged_all_data.reset_index(drop=True)
 
-    # 出現回数が指定した回数より少ない項目は削除する
+    # 出現回数が指定した回数より少ない列は削除する
     cols = marged_all_data.columns
+    deleted = []
     for col in cols:
         if marged_all_data[col].sum() <= 3:
             marged_all_data = marged_all_data.drop(columns=[col])
-            print(f"Deleted: {col}")
+            deleted.append(col)
             for states_col in states_cols:
                 if col == states_col:
                     states_cols.remove(col)
@@ -255,12 +274,21 @@ def main():
             for incidents_col in incidents_cols:
                 if col == incidents_col:
                     incidents_cols.remove(col)
+    print(f"Deleted: {deleted}")
+    logger.info(f"Deleted columns: {deleted}")
 
-    marged_all_data.to_csv(
-        f"{output_dir}/data_products_{date_now}_cat.csv",
-        index=False,
-        encoding="utf-8-sig",
-    )
+    # 指定した列の合計が0の行は削除する
+    target_row = []
+    for i in range(0, len(marged_all_data)):
+        if not (marged_all_data.iloc[i, :][causes_cols].sum().all()):
+            target_row.append(i)
+            continue
+        if not (marged_all_data.iloc[i, :][incidents_cols].sum().all()):
+            target_row.append(i)
+    print(target_row)
+    logger.info(f"Deleted row: {target_row}")
+    for row in target_row:
+        marged_all_data = marged_all_data.drop(axis=0, index=row)
 
     # 完全一致表現の二重チェック
     same_exp = []
@@ -272,6 +300,9 @@ def main():
                 same_exp.append(cause)
     if count > 0:
         print(f"There are (is) {count} same expressions between cause and incident")
+        logger.info(
+            f"There are (is) {count} same expressions between cause and incident"
+        )
 
     count = 0
     for state in states_cols:
@@ -281,6 +312,9 @@ def main():
                 same_exp.append(incident)
     if count > 0:
         print(f"There are (is) {count} same expressions between state and incident")
+        logger.info(
+            f"There are (is) {count} same expressions between state and incident"
+        )
 
     count = 0
     for state in states_cols:
@@ -290,10 +324,46 @@ def main():
                 same_exp.append(state)
     if count > 0:
         print(f"There are (is) {count} same expressions between state and cause")
+        logger.info(f"There are (is) {count} same expressions between state and cause")
     if same_exp:
         print(f"Same exp: {same_exp}")
+        logger.info(f"Same exp: {same_exp}")
+
+    # アークの向き設定用のデータを作成
+    arcs_from = []
+    arcs_to = []
+    for state in states_cols:
+        for cause in causes_cols:
+            arcs_from.append(state)
+            arcs_to.append(cause)
+    arcs_s2c = pd.DataFrame({"from": arcs_from, "to": arcs_to})
+    arcs_from = []
+    arcs_to = []
+    for cause in causes_cols:
+        for incident in incidents_cols:
+            arcs_from.append(cause)
+            arcs_to.append(incident)
+    arcs_c2i = pd.DataFrame({"from": arcs_from, "to": arcs_to})
 
     # 書き出し
+    arcs_s2c.to_csv(
+        f"{output_dir}/data_arcs_s2c_{date_now}_cat.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    arcs_c2i.to_csv(
+        f"{output_dir}/data_arcs_c2i_{date_now}_cat.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    marged_all_data.to_csv(
+        f"{output_dir}/data_products_{date_now}_cat.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
     states_cols = pd.Series(states_cols, name="states")
     states_cols.to_csv(
         f"{output_dir}/data_states_{date_now}_cat.csv",
@@ -316,8 +386,13 @@ def main():
     )
 
     print(
-        f"states: {len(states_cols)}, causes: {len(causes_cols)}, incidents: {len(incidents_cols)}"
+        f"states: {len(states_cols)}, causes: {len(causes_cols)}, incidents: {len(incidents_cols)}, arcs: {len(arcs_s2c) + len(arcs_c2i)}"
     )
+    logger.info(
+        f"states: {len(states_cols)}, causes: {len(causes_cols)}, incidents: {len(incidents_cols)}, arcs: {len(arcs_s2c) + len(arcs_c2i)}"
+    )
+    print(f"All data: {len(marged_all_data)}")
+    logger.info(f"All data: {len(marged_all_data)}")
 
 
 if __name__ == "__main__":
