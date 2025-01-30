@@ -20,6 +20,7 @@ cycler==0.12.1
 debugpy==1.8.11
 decorator==5.1.1
 defusedxml==0.7.1
+distro==1.9.0
 executing==2.1.0
 fastjsonschema==2.21.1
 fonttools==4.55.0
@@ -49,6 +50,7 @@ japanize-matplotlib==1.1.3
 jdepp==0.1.8
 jedi==0.19.2
 Jinja2==3.1.5
+jiter==0.8.2
 json5==0.10.0
 jsonpointer==3.0.0
 jsonschema==4.23.0
@@ -78,6 +80,7 @@ nest-asyncio==1.6.0
 notebook==7.3.2
 notebook_shim==0.2.4
 numpy==2.1.2
+openai==1.60.2
 overrides==7.7.0
 packaging==24.2
 pandas==2.2.3

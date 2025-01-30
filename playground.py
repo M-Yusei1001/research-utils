@@ -180,5 +180,14 @@ def add_dataframe():
     print(data)
 
 
+def extractData():
+    data = pd.read_csv(
+        "data/output/gemini/prompt_data_250130/シュレッダー_prompt.csv",
+        encoding="utf-8-sig",
+    )
+    value = data.loc[0, "事故原因区分"]
+    print(value)
+
+
 if __name__ == "__main__":
-    add_dataframe()
+    extractData()
