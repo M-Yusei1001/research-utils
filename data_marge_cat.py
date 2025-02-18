@@ -146,6 +146,9 @@ def main():
     causes_cols = []
     incidents_cols = []
 
+    # 数の記録用
+    raw_causes_cols = []
+
     # 前処理
     # 類似表現の統一
     for product in tqdm.tqdm(st.products_250115):
@@ -160,6 +163,17 @@ def main():
             f"data/output/inc_categorized/{product}_inc_cat.csv",
             encoding="utf-8-sig",
         )
+
+        # 「事故の原因」を記録
+        new_causes_cols = list(set(causes_df.columns) - set(raw_causes_cols))
+        # 特殊表現の置換
+        for col in new_causes_cols:
+            if col == "2人乗り":
+                col = "二人乗り"
+            # causes_colsに既に含まれていないことを確認して、追加する
+            if col not in raw_causes_cols:
+                raw_causes_cols.append(col)
+        # print(causes_cols)
 
         states_df = states_df[states_df.loc[:, "product"] == product]
         states_df = states_df.drop(columns=["product"])
@@ -329,34 +343,34 @@ def main():
         print(f"Same exp: {same_exp}")
         logger.info(f"Same exp: {same_exp}")
 
-    # アークの向き設定用のデータを作成
-    arcs_from = []
-    arcs_to = []
-    for state in states_cols:
-        for cause in causes_cols:
-            arcs_from.append(state)
-            arcs_to.append(cause)
-    arcs_s2c = pd.DataFrame({"from": arcs_from, "to": arcs_to})
-    arcs_from = []
-    arcs_to = []
-    for cause in causes_cols:
-        for incident in incidents_cols:
-            arcs_from.append(cause)
-            arcs_to.append(incident)
-    arcs_c2i = pd.DataFrame({"from": arcs_from, "to": arcs_to})
+    # # アークの向き設定用のデータを作成
+    # arcs_from = []
+    # arcs_to = []
+    # for state in states_cols:
+    #     for cause in causes_cols:
+    #         arcs_from.append(state)
+    #         arcs_to.append(cause)
+    # arcs_s2c = pd.DataFrame({"from": arcs_from, "to": arcs_to})
+    # arcs_from = []
+    # arcs_to = []
+    # for cause in causes_cols:
+    #     for incident in incidents_cols:
+    #         arcs_from.append(cause)
+    #         arcs_to.append(incident)
+    # arcs_c2i = pd.DataFrame({"from": arcs_from, "to": arcs_to})
 
-    # 書き出し
-    arcs_s2c.to_csv(
-        f"{output_dir}/data_arcs_s2c_{date_now}_cat.csv",
-        index=False,
-        encoding="utf-8-sig",
-    )
+    # # 書き出し
+    # arcs_s2c.to_csv(
+    #     f"{output_dir}/data_arcs_s2c_{date_now}_cat.csv",
+    #     index=False,
+    #     encoding="utf-8-sig",
+    # )
 
-    arcs_c2i.to_csv(
-        f"{output_dir}/data_arcs_c2i_{date_now}_cat.csv",
-        index=False,
-        encoding="utf-8-sig",
-    )
+    # arcs_c2i.to_csv(
+    #     f"{output_dir}/data_arcs_c2i_{date_now}_cat.csv",
+    #     index=False,
+    #     encoding="utf-8-sig",
+    # )
 
     marged_all_data.to_csv(
         f"{output_dir}/data_products_{date_now}_cat.csv",
@@ -386,13 +400,41 @@ def main():
     )
 
     print(
-        f"states: {len(states_cols)}, causes: {len(causes_cols)}, incidents: {len(incidents_cols)}, arcs: {len(arcs_s2c) + len(arcs_c2i)}"
+        f"states: {len(states_cols)}, causes: Before: {len(raw_causes_cols)}, Atfer: {len(causes_cols)}, incidents: {len(incidents_cols)}"
     )
     logger.info(
-        f"states: {len(states_cols)}, causes: {len(causes_cols)}, incidents: {len(incidents_cols)}, arcs: {len(arcs_s2c) + len(arcs_c2i)}"
+        f"states: {len(states_cols)}, causes: Before: {len(raw_causes_cols)},  After: {len(causes_cols)}, incidents: {len(incidents_cols)}"
     )
     print(f"All data: {len(marged_all_data)}")
     logger.info(f"All data: {len(marged_all_data)}")
+
+    # 出現回数の記録
+    all_count = marged_all_data.sum()
+
+    causes_count = []
+    for cause in causes_cols:
+        print(f"{cause}: {all_count[cause]}")
+        logger.info(f"{cause}: {all_count[cause]}")
+        causes_count.append(all_count[cause])
+    causes_count_df = pd.DataFrame(causes_count, index=[causes_cols])
+    causes_count_df.to_csv(
+        f"{output_dir}/data_causes_count_{date_now}_cat.csv",
+        index=True,
+        encoding="utf-8-sig",
+    )
+    print(causes_count)
+
+    incidents_count = []
+    for incident in incidents_cols:
+        print(f"{incident}: {all_count[incident]}")
+        logger.info(f"{incident}: {all_count[incident]}")
+        incidents_count.append(all_count[incident])
+    incidents_count_df = pd.DataFrame(incidents_count, index=[incidents_cols])
+    incidents_count_df.to_csv(
+        f"{output_dir}/data_incidents_count_{date_now}_cat.csv",
+        index=True,
+        encoding="utf-8-sig",
+    )
 
 
 if __name__ == "__main__":
