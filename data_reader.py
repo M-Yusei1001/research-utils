@@ -3,6 +3,7 @@ import tqdm
 import unicodedata
 import re
 import time
+import pandas as pd
 import settings as st
 
 

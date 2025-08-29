@@ -1,6 +1,0 @@
-{
-    "name": "Mecab:ipadic-neologd",
-    "build":{
-        "dockerfile": "Dockerfile"
-    }
-}
